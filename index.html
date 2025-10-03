@@ -3,38 +3,48 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>POST → GET Converter</title>
-  <meta name="description" content="Konverter POST-body (form, JSON, cURL -d) til en GET-URL." />
+  <title>POST → GET Converter (SSB PXWeb)</title>
+  <meta name="description" content="Konverter PXWeb POST-body (SSB) til en GET-URL med valueCodes[Dim]=verdier." />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main>
     <header>
-      <h1>POST → GET-konvertering</h1>
-      <p class="lead">Lim inn POST-data eller en cURL-linje, så lager vi riktig GET-URL – alt i nettleseren.</p>
+      <h1>POST → GET (SSB PXWeb)</h1>
+      <p class="lead">Lim inn en PXWeb POST-body eller cURL med <code>-d</code>. Appen oppdager PXWeb automatisk og lager riktig GET-URL.</p>
     </header>
 
     <section class="card">
-      <label for="baseUrl">Base-URL (uten parametre)</label>
-      <input id="baseUrl" placeholder="https://api.example.com/search" />
+      <label for="baseUrl">Base-URL (inkludér gjerne <code>?lang=no</code>)</label>
+      <input id="baseUrl" placeholder="https://data.ssb.no/api/pxwebapi/v2/tables/09429/data?lang=no" />
 
-      <div class="hint">Eksempel på gyldig base-URL: <code>https://api.example.com/search</code></div>
+      <div class="hint">Eksempel: <code>https://data.ssb.no/api/pxwebapi/v2/tables/09429/data?lang=no</code></div>
 
       <label for="postBody">POST-body eller cURL</label>
-      <textarea id="postBody" rows="10" placeholder='Eksempler:
-# x-www-form-urlencoded
-name=Ola&age=30
+      <textarea id="postBody" rows="14" placeholder='Lim inn PXWeb POST som JSON, f.eks.:
+{
+  "query": [
+    {
+      "code": "Region",
+      "selection": { "filter": "agg_single:KommGjeldende", "values": ["3101","3103"] }
+    },
+    { "code": "Nivaa", "selection": { "filter": "item", "values": ["00","01","02a","11","03a","04a","09a"] } },
+    { "code": "ContentsCode", "selection": { "filter": "item", "values": ["Personer"] } },
+    { "code": "Tid", "selection": { "filter": "item", "values": ["2023","2024"] } }
+  ],
+  "response": { "format": "json-stat2" }
+}
 
-# JSON
-{"name":"Ola","age":30}
-
-# cURL med data
-curl -X POST https://api.example.com/search -d "name=Ola&age=30"'></textarea>
+Eller en cURL:
+curl -X POST https://data.ssb.no/api/pxwebapi/v2/tables/09429/data?lang=no -H "content-type: application/json" -d "{ \"query\": [ ... ] }"
+'></textarea>
 
       <div class="row">
         <button id="btn">Konverter</button>
         <button id="clearBtn" class="ghost">Tøm</button>
       </div>
+
+      <div id="mode" class="mode">Modus: (ukjent)</div>
 
       <label for="output">GET-URL</label>
       <input id="output" readonly />
@@ -44,18 +54,18 @@ curl -X POST https://api.example.com/search -d "name=Ola&age=30"'></textarea>
       </div>
 
       <details class="tip">
-        <summary>Tips og formater</summary>
+        <summary>Om konverteringen</summary>
         <ul>
-          <li><strong>Form-encoded</strong>: <code>key=value&x=1</code></li>
-          <li><strong>JSON</strong>: <code>{"key":"value"}</code> → nøkler og verdier flates ut enkelt.</li>
-          <li><strong>cURL</strong>: plukker <code>-d/--data</code> og base-URL automatisk.</li>
+          <li>Oppdager PXWeb-JSON (feltet <code>query</code> er en array med <code>code</code> + <code>selection.values</code>).</li>
+          <li>Bygger parametere som <code>valueCodes[Region]=3101,3103</code>, <code>valueCodes[Nivaa]=...</code> i samme rekkefølge.</li>
+          <li><code>selection.filter</code> beholdes ikke i GET – bare <code>values</code> brukes.</li>
+          <li>Andre formater (ren form-encoded/vanlig JSON) støttes fortsatt som fallback.</li>
         </ul>
       </details>
     </section>
 
     <footer>
-      <p>Laget som en statisk app. Ingen data sendes til server.</p>
-      <p><small>© 2025 – MIT License (kan brukes fritt)</small></p>
+      <p>Statisk app – ingen data sendes til server. © 2025 – MIT</p>
     </footer>
   </main>
 

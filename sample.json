@@ -1,0 +1,51 @@
+{
+  "query": [
+    {
+      "code": "Region",
+      "selection": {
+        "filter": "agg_single:KommGjeldende",
+        "values": [
+          "3101",
+          "3103"
+        ]
+      }
+    },
+    {
+      "code": "Nivaa",
+      "selection": {
+        "filter": "item",
+        "values": [
+          "00",
+          "01",
+          "02a",
+          "11",
+          "03a",
+          "04a",
+          "09a"
+        ]
+      }
+    },
+    {
+      "code": "ContentsCode",
+      "selection": {
+        "filter": "item",
+        "values": [
+          "Personer"
+        ]
+      }
+    },
+    {
+      "code": "Tid",
+      "selection": {
+        "filter": "item",
+        "values": [
+          "2023",
+          "2024"
+        ]
+      }
+    }
+  ],
+  "response": {
+    "format": "json-stat2"
+  }
+}

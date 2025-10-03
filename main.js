@@ -1,29 +1,60 @@
-// POST → GET converter (all logic runs in the browser)
+// POST → GET converter (SSB PXWeb aware). All logic runs in the browser.
+
+function tryParseJSON(text) {
+  try { return JSON.parse(text); } catch { return null; }
+}
+
+function isPxWebJson(obj) {
+  if (!obj || typeof obj !== "object") return false;
+  if (!Array.isArray(obj.query)) return false;
+  return obj.query.every(q =>
+    q && typeof q === "object" &&
+    typeof q.code === "string" &&
+    q.selection && Array.isArray(q.selection.values)
+  );
+}
+
+function buildPxWebParams(px) {
+  // Preserve order of px.query
+  const parts = [];
+  for (const item of px.query) {
+    const code = item.code;
+    const values = Array.isArray(item.selection?.values) ? item.selection.values : [];
+    // Join as comma-separated; encode values but keep commas and bracket key style
+    const joined = values.map(v => encodeURIComponent(String(v))).join(",");
+    const key = `valueCodes[${code}]`; // Avoid encoding [ ]
+    parts.push(`${key}=${joined}`);
+  }
+  return parts.join("&");
+}
+
+function parseCurl(input) {
+  // Extract URL and data payload from a cURL command
+  const urlMatch = input.match(/curl\s+(?:-X\s+POST\s+)?(\S+)/i);
+  const dataMatch = input.match(/(?:--data|-d)\s+(['"]?)([\s\S]*?)\1(\s|$)/i);
+  return {
+    url: urlMatch ? urlMatch[1] : null,
+    data: dataMatch ? dataMatch[2] : ""
+  };
+}
 
 function parseFormOrJson(text) {
   text = text.trim();
   if (!text) return {};
 
-  // Try JSON first
-  if (text.startsWith("{") || text.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(text);
-      return flattenObject(parsed);
-    } catch (e) {
-      // Fall through to form parsing
-    }
+  const js = tryParseJSON(text);
+  if (js !== null) {
+    // Generic JSON → flatten to key=value (fallback path)
+    return flattenObject(js);
   }
 
-  // Otherwise, assume x-www-form-urlencoded
+  // Otherwise assume x-www-form-urlencoded
   const obj = {};
   text.split("&").forEach(pair => {
     if (!pair) return;
-    const eq = pair.indexOf("=");
-    let k, v;
-    if (eq === -1) { k = pair; v = ""; }
-    else { k = pair.slice(0, eq); v = pair.slice(eq + 1); }
-    const key = decodeURIComponent(k.replace(/\+/g, " "));
-    const val = decodeURIComponent(v.replace(/\+/g, " "));
+    const [k, v=""] = pair.split("=");
+    const key = decodeURIComponent((k||"").replace(/\+/g, " "));
+    const val = decodeURIComponent((v||"").replace(/\+/g, " "));
     obj[key] = val;
   });
   return obj;
@@ -46,22 +77,6 @@ function flattenObject(input, prefix = "", out = {}) {
   return out;
 }
 
-function parseBodyToObject(src) {
-  // If cURL: extract base URL and data payload
-  const curlUrl = src.match(/curl\s+(?:-X\s+POST\s+)?(?<url>\S+)/i);
-  const curlData = src.match(/(?:--data|-d)\s+(['"]?)([\s\S]*?)\1(\s|$)/i);
-
-  if (curlUrl || curlData) {
-    const url = curlUrl?.groups?.url ?? null;
-    const dataRaw = curlData ? curlData[2] : "";
-    const obj = parseFormOrJson(dataRaw);
-    return { url, obj };
-  }
-
-  // Else: treat whole input as a body
-  return { url: null, obj: parseFormOrJson(src) };
-}
-
 function buildQuery(obj) {
   return Object.entries(obj)
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
@@ -73,10 +88,9 @@ function isLikelyUrl(s) {
 }
 
 function normalizeBaseUrl(s) {
-  let base = s.trim();
+  let base = (s || "").trim();
   if (!base) return "";
   if (!/^https?:\/\//i.test(base)) {
-    // If user typed "api.example.com/endpoint", add https://
     base = "https://" + base.replace(/^\/+/, "");
   }
   return base;
@@ -87,21 +101,44 @@ document.getElementById("btn").addEventListener("click", () => {
   const bodyEl = document.getElementById("postBody");
   const outEl  = document.getElementById("output");
   const openBtn = document.getElementById("openBtn");
+  const modeEl = document.getElementById("mode");
 
-  const { url: detectedUrl, obj } = parseBodyToObject(bodyEl.value);
-  const baseInput = baseEl.value;
-  const base = normalizeBaseUrl(detectedUrl || baseInput);
+  let detectedUrl = null;
+  let dataText = bodyEl.value;
+  // Check if it's a cURL input
+  if (/^\s*curl\s+/i.test(dataText)) {
+    const c = parseCurl(dataText);
+    detectedUrl = c.url;
+    dataText = c.data;
+  }
+
+  // Try parse as JSON (for PXWeb detection)
+  const json = tryParseJSON(dataText);
+  const base = normalizeBaseUrl(detectedUrl || baseEl.value);
 
   if (!base) {
     outEl.value = "Sett base-URL først (eller oppgi i cURL)";
     openBtn.href = "#";
     openBtn.setAttribute("aria-disabled", "true");
+    modeEl.textContent = "Modus: ukjent (mangler base-URL)";
     return;
   }
 
-  const sep = base.includes("?") ? "&" : "?";
-  const query = buildQuery(obj);
-  const result = query ? `${base}${sep}${query}` : base;
+  let result = base;
+  if (json && isPxWebJson(json)) {
+    // PXWeb mode
+    const params = buildPxWebParams(json);
+    const sep = base.includes("?") ? "&" : "?";
+    result = params ? `${base}${sep}${params}` : base;
+    modeEl.textContent = "Modus: SSB PXWeb";
+  } else {
+    // Generic fallback: form-encoded or generic JSON flatten
+    const obj = parseFormOrJson(dataText);
+    const query = buildQuery(obj);
+    const sep = base.includes("?") ? "&" : "?";
+    result = query ? `${base}${sep}${query}` : base;
+    modeEl.textContent = "Modus: Generisk (form/JSON)";
+  }
 
   outEl.value = result;
   openBtn.href = isLikelyUrl(result) ? result : "#";
@@ -115,7 +152,6 @@ document.getElementById("copyBtn").addEventListener("click", async () => {
     await navigator.clipboard.writeText(val);
     alert("Kopiert!");
   } catch (e) {
-    // Fallback: select + manual copy
     const el = document.getElementById("output");
     el.focus();
     el.select();
@@ -126,4 +162,5 @@ document.getElementById("copyBtn").addEventListener("click", async () => {
 document.getElementById("clearBtn").addEventListener("click", () => {
   document.getElementById("postBody").value = "";
   document.getElementById("output").value = "";
+  document.getElementById("mode").textContent = "Modus: (ukjent)";
 });

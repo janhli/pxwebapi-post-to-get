@@ -1,48 +1,68 @@
-# POST → GET Converter (static site)
+# POST → GET Converter (SSB PXWeb)
 
-En superenkel **statisk** app som konverterer POST-body (form-encoded, JSON, cURL `-d`) til en GET-URL – alt skjer i nettleseren, ingen server.
+En statisk app som konverterer PXWeb POST-body (SSB) til en GET-URL med `valueCodes[Dim]=verdier`.
+Ingen server – alt skjer i nettleseren.
 
 ## Bruk
-1. Skriv inn **Base-URL** (uten parametre), f.eks. `https://api.example.com/search`
-2. Lim inn **POST-body** eller en enkel **cURL-linje** (med `-d`/`--data`).
-3. Trykk **Konverter** → du får en ferdig GET-URL som kan kopieres/åpnes.
+1. Lim inn **base-URL** (inkludér gjerne `?lang=no`), f.eks.  
+   `https://data.ssb.no/api/pxwebapi/v2/tables/09429/data?lang=no`
+2. Lim inn **PXWeb POST-body** som JSON (eller en cURL-linje med `-d`).
+3. Trykk **Konverter** → du får en GET-URL med `valueCodes[...]`-parametre.
+4. Bruk **Kopier** eller **Åpne i ny fane**.
 
-Støtter:
-- `application/x-www-form-urlencoded` – `key=value&x=1`
-- JSON – `{"key":"value"}` (flates ut til `key=value`-par)
-- `curl -X POST ... -d "key=value"` – henter også base-URL fra cURL-linjen om til stede
+### Hva oppdages automatisk?
+- Strukturen `{ "query": [ { "code": "...",
+  "selection": { "values": [...] } }, ... ] }` → **PXWeb-modus**.
+- `selection.filter` brukes ikke i GET (bare `values`). Rekkefølgen bevares.
+- Andre formater (form-encoded/vanlig JSON) støttes som **fallback**.
 
-> NB: Dette er en statisk side. Ingen data sendes til server – alt skjer i nettleseren.
+## Eksempel
+**Input (POST-body):**
+```json
+{
+  "query": [
+    {
+      "code": "Region",
+      "selection": {
+        "filter": "agg_single:KommGjeldende",
+        "values": ["3101","3103"]
+      }
+    },
+    {
+      "code": "Nivaa",
+      "selection": { "filter": "item", "values": ["00","01","02a","11","03a","04a","09a"] }
+    },
+    {
+      "code": "ContentsCode",
+      "selection": { "filter": "item", "values": ["Personer"] }
+    },
+    {
+      "code": "Tid",
+      "selection": { "filter": "item", "values": ["2023","2024"] }
+    }
+  ],
+  "response": { "format": "json-stat2" }
+}
+```
 
----
+**Base-URL:**
+```
+https://data.ssb.no/api/pxwebapi/v2/tables/09429/data?lang=no
+```
 
-## Publisering på GitHub Pages (uten build-verktøy)
-1. Opprett et nytt repository på GitHub, f.eks. `post-to-get`.
-2. Legg filene i rot (`index.html`, `styles.css`, `main.js`, `.nojekyll`, `README.md`).
-3. Push til `main`-branch.
-4. I repoet: **Settings → Pages → Build and deployment**
-   - **Source**: `Deploy from a branch`
-   - **Branch**: `main` – **Folder**: `/root`
-5. Vent 1–2 minutter. Siden blir tilgjengelig på `https://<brukernavn>.github.io/post-to-get/`
+**Output (GET-URL):**
+```
+https://data.ssb.no/api/pxwebapi/v2/tables/09429/data?lang=no&valueCodes[Region]=3101,3103&valueCodes[Nivaa]=00,01,02a,11,03a,04a,09a&valueCodes[ContentsCode]=Personer&valueCodes[Tid]=2023,2024
+```
 
-Tips:
-- Filen `.nojekyll` sørger for at GitHub Pages ikke prøver å Jekyll-bygge prosjektet.
-- Vil du bruke et custom domene? Legg en `CNAME`-fil med domenet, og pek DNS CNAME til `<brukernavn>.github.io.`
-
----
+## Publisering (GitHub Pages)
+1. Opprett et nytt public repo på GitHub (f.eks. `post-to-get`).
+2. Legg filene `index.html`, `styles.css`, `main.js`, `.nojekyll`, `README.md` i rot.
+3. Repo → **Settings → Pages** → **Deploy from a branch** (`main` / `/root`). Vent 1–2 min.
+4. Besøk `https://<brukernavn>.github.io/post-to-get/`
 
 ## Lokal test
-Bare åpne `index.html` i nettleseren (dobbeltklikk). Ingen server nødvendig.
-
----
-
-## Videre arbeid
-- Validering og bedre feilmeldinger for JSON/form.
-- Støtte for flere `-d` flagg i cURL (kombinere flere payloads).
-- Preset-lister for base-URL-er du bruker ofte.
-- Permalinks: oppdater adressefeltet med resultatet.
-
----
+Dobbeltklikk `index.html` (ingen server nødvendig).
 
 ## Lisens
-MIT – bruk fritt, endre som du vil.
+MIT

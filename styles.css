@@ -14,7 +14,7 @@ body{
   margin:0; background:var(--bg); color:var(--fg);
   font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
-main{max-width:860px; margin:2rem auto; padding:0 1rem}
+main{max-width:900px; margin:2rem auto; padding:0 1rem}
 header h1{margin:0 0 .5rem 0}
 .lead{color:var(--muted); margin:.25rem 0 1.25rem 0}
 
@@ -32,7 +32,7 @@ input, textarea, button, a.ghost{
   border:1px solid var(--border); border-radius:10px;
   font:inherit;
 }
-textarea{resize:vertical; min-height:9rem}
+textarea{resize:vertical; min-height:12rem}
 button{
   background:var(--accent); color:#fff; border:none; cursor:pointer;
 }
@@ -49,3 +49,4 @@ code{background:#fff; border:1px solid var(--border); padding:.15rem .35rem; bor
 .hint{color:var(--muted); font-size:.9rem; margin:.2rem 0 .6rem}
 .tip{margin-top:.5rem}
 footer{color:var(--muted); text-align:center; margin:1.5rem 0}
+.mode{font-size:.9rem; color:var(--muted); margin:.25rem 0 .75rem}
