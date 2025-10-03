@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PXWeb v0 → v2 (POST → GET)</title>
-  <meta name="description" content="Konverter PXWeb v0 POST-JSON til presis PXWeb v2 GET-URL." />
+  <meta name="description" content="Konverter PXWeb v0 POST-JSON til presis PXWeb v2 GET-URL. Kan auto-fylle host, tabell og språk fra v0-URL/cURL." />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -14,6 +14,16 @@
       <p class="lead">Lim inn PXWeb v0 POST-JSON (SSB). Vi bygger <strong>alltid</strong> v2-URL med mønsteret
       <code>https://&lt;domene&gt;/api/pxwebapi/v2/tables/&lt;TABLE&gt;/data?lang=&lt;LANG&gt;</code>.</p>
     </header>
+
+    <section class="card">
+      <label for="v0Input">v0-URL eller cURL (valgfritt)</label>
+      <input id="v0Input" placeholder="f.eks. curl -X POST https://data.ssb.no/.../v0/... -d '{ ... }' eller en gammel v0-nettadresse" />
+      <div class="row">
+        <button id="autofillBtn" class="ghost">Autofyll fra v0-URL/cURL</button>
+        <button id="clearUrlBtn" class="ghost">Tøm URL-felt</button>
+      </div>
+      <div id="autofillMsg" class="hint"></div>
+    </section>
 
     <section class="card">
       <div class="grid">
@@ -51,7 +61,6 @@
         <button id="clearBtn" class="ghost">Tøm</button>
       </div>
 
-      <div id="mode" class="mode">Modus: v0 → v2 (STRICT)</div>
       <div id="basePreview" class="hint"></div>
 
       <label for="output">v2 GET-URL</label>
