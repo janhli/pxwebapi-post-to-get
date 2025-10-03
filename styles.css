@@ -1,0 +1,51 @@
+/* Minimal, lett å lese */
+:root{
+  --bg:#ffffff;
+  --fg:#111;
+  --muted:#666;
+  --card:#f6f7f9;
+  --border:#e6e7eb;
+  --accent:#2563eb;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+main{max-width:860px; margin:2rem auto; padding:0 1rem}
+header h1{margin:0 0 .5rem 0}
+.lead{color:var(--muted); margin:.25rem 0 1.25rem 0}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:1rem;
+}
+
+label{display:block; font-weight:600; margin:.75rem 0 .25rem}
+input, textarea, button, a.ghost{
+  width:100%;
+  padding:.8rem; margin:.4rem 0;
+  border:1px solid var(--border); border-radius:10px;
+  font:inherit;
+}
+textarea{resize:vertical; min-height:9rem}
+button{
+  background:var(--accent); color:#fff; border:none; cursor:pointer;
+}
+button:hover{filter:brightness(0.95)}
+button.ghost, a.ghost{
+  background:#fff; color:var(--fg); text-align:center; text-decoration:none;
+}
+a.ghost{display:inline-block; border:1px solid var(--border)}
+
+.row{display:flex; gap:.6rem; align-items:center}
+.row > *{flex:1}
+
+code{background:#fff; border:1px solid var(--border); padding:.15rem .35rem; border-radius:6px}
+.hint{color:var(--muted); font-size:.9rem; margin:.2rem 0 .6rem}
+.tip{margin-top:.5rem}
+footer{color:var(--muted); text-align:center; margin:1.5rem 0}

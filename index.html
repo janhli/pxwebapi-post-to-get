@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>POST → GET Converter</title>
+  <meta name="description" content="Konverter POST-body (form, JSON, cURL -d) til en GET-URL." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>POST → GET-konvertering</h1>
+      <p class="lead">Lim inn POST-data eller en cURL-linje, så lager vi riktig GET-URL – alt i nettleseren.</p>
+    </header>
+
+    <section class="card">
+      <label for="baseUrl">Base-URL (uten parametre)</label>
+      <input id="baseUrl" placeholder="https://api.example.com/search" />
+
+      <div class="hint">Eksempel på gyldig base-URL: <code>https://api.example.com/search</code></div>
+
+      <label for="postBody">POST-body eller cURL</label>
+      <textarea id="postBody" rows="10" placeholder='Eksempler:
+# x-www-form-urlencoded
+name=Ola&age=30
+
+# JSON
+{"name":"Ola","age":30}
+
+# cURL med data
+curl -X POST https://api.example.com/search -d "name=Ola&age=30"'></textarea>
+
+      <div class="row">
+        <button id="btn">Konverter</button>
+        <button id="clearBtn" class="ghost">Tøm</button>
+      </div>
+
+      <label for="output">GET-URL</label>
+      <input id="output" readonly />
+      <div class="row">
+        <button id="copyBtn">Kopier</button>
+        <a id="openBtn" class="ghost" href="#" target="_blank" rel="noopener">Åpne i ny fane</a>
+      </div>
+
+      <details class="tip">
+        <summary>Tips og formater</summary>
+        <ul>
+          <li><strong>Form-encoded</strong>: <code>key=value&x=1</code></li>
+          <li><strong>JSON</strong>: <code>{"key":"value"}</code> → nøkler og verdier flates ut enkelt.</li>
+          <li><strong>cURL</strong>: plukker <code>-d/--data</code> og base-URL automatisk.</li>
+        </ul>
+      </details>
+    </section>
+
+    <footer>
+      <p>Laget som en statisk app. Ingen data sendes til server.</p>
+      <p><small>© 2025 – MIT License (kan brukes fritt)</small></p>
+    </footer>
+  </main>
+
+  <script src="main.js"></script>
+</body>
+</html>
