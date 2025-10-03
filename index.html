@@ -3,50 +3,58 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>POST → GET Converter (SSB PXWeb)</title>
-  <meta name="description" content="Konverter PXWeb POST-body (SSB) til en GET-URL med valueCodes[Dim]=verdier." />
+  <title>PXWeb v0 → v2 (POST → GET)</title>
+  <meta name="description" content="Konverter PXWeb v0 POST-JSON til presis PXWeb v2 GET-URL." />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main>
     <header>
-      <h1>POST → GET (SSB PXWeb)</h1>
-      <p class="lead">Lim inn en PXWeb POST-body eller cURL med <code>-d</code>. Appen oppdager PXWeb automatisk og lager riktig GET-URL.</p>
+      <h1>PXWeb v0 → v2</h1>
+      <p class="lead">Lim inn PXWeb v0 POST-JSON (SSB). Vi bygger <strong>alltid</strong> v2-URL med mønsteret
+      <code>https://&lt;domene&gt;/api/pxwebapi/v2/tables/&lt;TABLE&gt;/data?lang=&lt;LANG&gt;</code>.</p>
     </header>
 
     <section class="card">
-      <label for="baseUrl">Base-URL (inkludér gjerne <code>?lang=no</code>)</label>
-      <input id="baseUrl" placeholder="https://data.ssb.no/api/pxwebapi/v2/tables/09429/data?lang=no" />
+      <div class="grid">
+        <div>
+          <label for="host">Domene (ikke lim inn /api...)</label>
+          <input id="host" value="https://data.ssb.no" />
+          <div class="hint">Paster du en hel URL med /v0/ osv., så plukker vi ut bare domenet.</div>
+        </div>
+        <div>
+          <label for="tableId">Tabell-ID</label>
+          <input id="tableId" placeholder="09429" />
+          <div class="hint">Eksempel: 09429</div>
+        </div>
+        <div>
+          <label for="lang">Språk</label>
+          <input id="lang" value="no" />
+          <div class="hint">f.eks. no / en</div>
+        </div>
+      </div>
 
-      <div class="hint">Eksempel: <code>https://data.ssb.no/api/pxwebapi/v2/tables/09429/data?lang=no</code></div>
-
-      <label for="postBody">POST-body eller cURL</label>
-      <textarea id="postBody" rows="14" placeholder='Lim inn PXWeb POST som JSON, f.eks.:
+      <label for="postBody">PXWeb v0 POST-body (JSON)</label>
+      <textarea id="postBody" rows="14" placeholder='Lim inn v0 POST-JSON, f.eks.:
 {
   "query": [
-    {
-      "code": "Region",
-      "selection": { "filter": "agg_single:KommGjeldende", "values": ["3101","3103"] }
-    },
+    { "code": "Region", "selection": { "filter": "agg_single:KommGjeldende", "values": ["3101","3103"] } },
     { "code": "Nivaa", "selection": { "filter": "item", "values": ["00","01","02a","11","03a","04a","09a"] } },
     { "code": "ContentsCode", "selection": { "filter": "item", "values": ["Personer"] } },
     { "code": "Tid", "selection": { "filter": "item", "values": ["2023","2024"] } }
   ],
   "response": { "format": "json-stat2" }
-}
-
-Eller en cURL:
-curl -X POST https://data.ssb.no/api/pxwebapi/v2/tables/09429/data?lang=no -H "content-type: application/json" -d "{ \"query\": [ ... ] }"
-'></textarea>
+}'></textarea>
 
       <div class="row">
         <button id="btn">Konverter</button>
         <button id="clearBtn" class="ghost">Tøm</button>
       </div>
 
-      <div id="mode" class="mode">Modus: (ukjent)</div>
+      <div id="mode" class="mode">Modus: v0 → v2 (STRICT)</div>
+      <div id="basePreview" class="hint"></div>
 
-      <label for="output">GET-URL</label>
+      <label for="output">v2 GET-URL</label>
       <input id="output" readonly />
       <div class="row">
         <button id="copyBtn">Kopier</button>
@@ -54,18 +62,17 @@ curl -X POST https://data.ssb.no/api/pxwebapi/v2/tables/09429/data?lang=no -H "c
       </div>
 
       <details class="tip">
-        <summary>Om konverteringen</summary>
+        <summary>Hva garanteres</summary>
         <ul>
-          <li>Oppdager PXWeb-JSON (feltet <code>query</code> er en array med <code>code</code> + <code>selection.values</code>).</li>
-          <li>Bygger parametere som <code>valueCodes[Region]=3101,3103</code>, <code>valueCodes[Nivaa]=...</code> i samme rekkefølge.</li>
-          <li><code>selection.filter</code> beholdes ikke i GET – bare <code>values</code> brukes.</li>
-          <li>Andre formater (ren form-encoded/vanlig JSON) støttes fortsatt som fallback.</li>
+          <li>Base-URL <em>tvinges</em> til <code>https://&lt;domene&gt;/api/pxwebapi/v2/tables/&lt;TABLE&gt;/data?lang=&lt;LANG&gt;</code>.</li>
+          <li>Kun <code>valueCodes[Dim]=csv</code> legges til etter <code>lang</code>.</li>
+          <li>Rekkefølgen fra <code>query[]</code> bevares. Braketter (<code>[]</code>) encodes ikke.</li>
         </ul>
       </details>
     </section>
 
     <footer>
-      <p>Statisk app – ingen data sendes til server. © 2025 – MIT</p>
+      <p>Statisk app – alt kjører i nettleseren. © 2025 – MIT</p>
     </footer>
   </main>
 

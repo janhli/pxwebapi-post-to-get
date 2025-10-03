@@ -1,148 +1,84 @@
-// POST → GET converter (SSB PXWeb aware). All logic runs in the browser.
+// PXWeb v0 → v2 converter (STRICT, forced base).
 
 function tryParseJSON(text) {
   try { return JSON.parse(text); } catch { return null; }
 }
 
-function isPxWebJson(obj) {
-  if (!obj || typeof obj !== "object") return false;
-  if (!Array.isArray(obj.query)) return false;
-  return obj.query.every(q =>
-    q && typeof q === "object" &&
-    typeof q.code === "string" &&
-    q.selection && Array.isArray(q.selection.values)
-  );
+function assertPxWebJson(obj) {
+  if (!obj || typeof obj !== "object" || !Array.isArray(obj.query)) {
+    throw new Error("Ugyldig PXWeb-post: mangler 'query' som array.");
+  }
+  for (const q of obj.query) {
+    if (!q || typeof q.code !== "string" || !q.selection || !Array.isArray(q.selection.values)) {
+      throw new Error("Ugyldig element i 'query': krever { code: string, selection: { values: [] } }.");
+    }
+  }
 }
 
-function buildPxWebParams(px) {
-  // Preserve order of px.query
+function buildValueCodesParams(px) {
   const parts = [];
   for (const item of px.query) {
     const code = item.code;
     const values = Array.isArray(item.selection?.values) ? item.selection.values : [];
-    // Join as comma-separated; encode values but keep commas and bracket key style
-    const joined = values.map(v => encodeURIComponent(String(v))).join(",");
-    const key = `valueCodes[${code}]`; // Avoid encoding [ ]
+    const joined = values.map(v => encodeURIComponent(String(v))).join(","); // encode each value; commas remain
+    const key = `valueCodes[${code}]`; // do not encode brackets
     parts.push(`${key}=${joined}`);
   }
   return parts.join("&");
 }
 
-function parseCurl(input) {
-  // Extract URL and data payload from a cURL command
-  const urlMatch = input.match(/curl\s+(?:-X\s+POST\s+)?(\S+)/i);
-  const dataMatch = input.match(/(?:--data|-d)\s+(['"]?)([\s\S]*?)\1(\s|$)/i);
-  return {
-    url: urlMatch ? urlMatch[1] : null,
-    data: dataMatch ? dataMatch[2] : ""
-  };
-}
-
-function parseFormOrJson(text) {
-  text = text.trim();
-  if (!text) return {};
-
-  const js = tryParseJSON(text);
-  if (js !== null) {
-    // Generic JSON → flatten to key=value (fallback path)
-    return flattenObject(js);
+function extractDomainOnly(input) {
+  let s = (input || "").trim();
+  if (!s) return "";
+  // If it looks like a full URL, use URL parser
+  try {
+    if (!/^https?:\/\//i.test(s)) s = "https://" + s;
+    const u = new URL(s);
+    const port = u.port ? `:${u.port}` : "";
+    return `${u.protocol}//${u.hostname}${port}`;
+  } catch {
+    // Fallback: strip path after first /
+    return s.replace(/^(https?:\/\/)?([^\/]+).*/i, (m, p1, host) => (p1 || "https://") + host);
   }
-
-  // Otherwise assume x-www-form-urlencoded
-  const obj = {};
-  text.split("&").forEach(pair => {
-    if (!pair) return;
-    const [k, v=""] = pair.split("=");
-    const key = decodeURIComponent((k||"").replace(/\+/g, " "));
-    const val = decodeURIComponent((v||"").replace(/\+/g, " "));
-    obj[key] = val;
-  });
-  return obj;
 }
 
-// Flatten nested JSON into simple key=value pairs e.g. user.name → "Ola"
-function flattenObject(input, prefix = "", out = {}) {
-  if (Array.isArray(input)) {
-    input.forEach((v, i) => flattenObject(v, prefix ? `${prefix}[${i}]` : String(i), out));
-    return out;
-  }
-  if (input && typeof input === "object") {
-    Object.entries(input).forEach(([k, v]) => {
-      const p = prefix ? `${prefix}.${k}` : k;
-      flattenObject(v, p, out);
-    });
-    return out;
-  }
-  out[prefix] = input;
-  return out;
-}
-
-function buildQuery(obj) {
-  return Object.entries(obj)
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-    .join("&");
-}
-
-function isLikelyUrl(s) {
-  return /^(https?:)?\/\//i.test(s) || /^[a-z0-9.-]+\.[a-z]{2,}([/:].*)?$/i.test(s);
-}
-
-function normalizeBaseUrl(s) {
-  let base = (s || "").trim();
-  if (!base) return "";
-  if (!/^https?:\/\//i.test(base)) {
-    base = "https://" + base.replace(/^\/+/, "");
-  }
-  return base;
+function buildForcedV2Base(hostInput, tableId, lang) {
+  const domain = extractDomainOnly(hostInput); // e.g., https://data.ssb.no
+  const table = (tableId || "").trim();
+  const language = (lang || "no").trim();
+  if (!domain) throw new Error("Mangler domene (host).");
+  if (!table) throw new Error("Mangler tabell-ID.");
+  const langParam = encodeURIComponent(language || "no");
+  return `${domain}/api/pxwebapi/v2/tables/${table}/data?lang=${langParam}`;
 }
 
 document.getElementById("btn").addEventListener("click", () => {
-  const baseEl = document.getElementById("baseUrl");
-  const bodyEl = document.getElementById("postBody");
-  const outEl  = document.getElementById("output");
+  const hostEl = document.getElementById("host");
+  const tableEl = document.getElementById("tableId");
+  const langEl  = document.getElementById("lang");
+  const bodyEl  = document.getElementById("postBody");
+  const outEl   = document.getElementById("output");
   const openBtn = document.getElementById("openBtn");
-  const modeEl = document.getElementById("mode");
+  const basePreview = document.getElementById("basePreview");
 
-  let detectedUrl = null;
-  let dataText = bodyEl.value;
-  // Check if it's a cURL input
-  if (/^\s*curl\s+/i.test(dataText)) {
-    const c = parseCurl(dataText);
-    detectedUrl = c.url;
-    dataText = c.data;
-  }
+  try {
+    const px = tryParseJSON(bodyEl.value);
+    if (!px) throw new Error("POST-body er ikke gyldig JSON.");
+    assertPxWebJson(px);
 
-  // Try parse as JSON (for PXWeb detection)
-  const json = tryParseJSON(dataText);
-  const base = normalizeBaseUrl(detectedUrl || baseEl.value);
+    const base = buildForcedV2Base(hostEl.value, tableEl.value, langEl.value);
+    basePreview.textContent = `Base-URL: ${base}`;
 
-  if (!base) {
-    outEl.value = "Sett base-URL først (eller oppgi i cURL)";
+    const params = buildValueCodesParams(px);
+    const result = params ? `${base}&${params}` : base;
+
+    outEl.value = result;
+    openBtn.href = result;
+  } catch (e) {
+    outEl.value = `Feil: ${e.message}`;
     openBtn.href = "#";
-    openBtn.setAttribute("aria-disabled", "true");
-    modeEl.textContent = "Modus: ukjent (mangler base-URL)";
-    return;
+    basePreview.textContent = "";
   }
-
-  let result = base;
-  if (json && isPxWebJson(json)) {
-    // PXWeb mode
-    const params = buildPxWebParams(json);
-    const sep = base.includes("?") ? "&" : "?";
-    result = params ? `${base}${sep}${params}` : base;
-    modeEl.textContent = "Modus: SSB PXWeb";
-  } else {
-    // Generic fallback: form-encoded or generic JSON flatten
-    const obj = parseFormOrJson(dataText);
-    const query = buildQuery(obj);
-    const sep = base.includes("?") ? "&" : "?";
-    result = query ? `${base}${sep}${query}` : base;
-    modeEl.textContent = "Modus: Generisk (form/JSON)";
-  }
-
-  outEl.value = result;
-  openBtn.href = isLikelyUrl(result) ? result : "#";
-  openBtn.removeAttribute("aria-disabled");
 });
 
 document.getElementById("copyBtn").addEventListener("click", async () => {
@@ -162,5 +98,5 @@ document.getElementById("copyBtn").addEventListener("click", async () => {
 document.getElementById("clearBtn").addEventListener("click", () => {
   document.getElementById("postBody").value = "";
   document.getElementById("output").value = "";
-  document.getElementById("mode").textContent = "Modus: (ukjent)";
+  document.getElementById("basePreview").textContent = "";
 });
